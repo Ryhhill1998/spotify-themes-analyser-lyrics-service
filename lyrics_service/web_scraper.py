@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import urllib.parse
+from requests_html import HTMLSession, AsyncHTMLSession
 
 class LyricsScraperException(Exception):
 
@@ -22,7 +23,7 @@ class LyricsScraper:
         return response.text
     
 
-    def _get_lyrics_html(self, artist: str, track_title: str):
+    async def _get_lyrics_html(self, artist: str, track_title: str):
 
         url=self._get_url(artist, track_title)
         response = requests.get(url, headers=self.headers)
@@ -31,7 +32,8 @@ class LyricsScraper:
             html=response.text
 
         elif response.status_code==404:
-            html=self._search_html(artist, track_title)
+            html= await self._search_html(artist, track_title)
+
         else:
             raise LyricsScraperException("Lyrics not found")
         
@@ -48,24 +50,27 @@ class LyricsScraper:
         url=f"{self.base_url}/{artist}/{title}.html"
 
         return url
+
     
-    def _search_html(self, artist: str, track_title: str):
+    async def _search_html(self, artist: str, track_title: str):
 
         url = "https://www.azlyrics.com/"
-        html = self._get_html(url)
-        soup = BeautifulSoup(html, "html.parser")
-        x_selector = soup.select_one("form.navbar-form.navbar-right.search input[name='x']")
+        session = AsyncHTMLSession()
+        response = await session.get(url)
+        await response.html.render(sleep=10)
 
-        if x_selector is None:
+        hidden_input = response.html.find("input[type=hidden]", first=True)
+        x_value = hidden_input.attrs["value"]
+
+        if x_value is None:
             raise LyricsScraperException("Search form input 'x' not found")
         
-        x_value = x_selector.get("value")
         base_url = "https://search.azlyrics.com/search.php"
         query_params=urllib.parse.urlencode({"q":f"{artist} {track_title}", "x": x_value})
-        whole_url=f"{base_url}/?{query_params}"
+        whole_url=f"{base_url}?{query_params}"
         top_search = self._get_html(whole_url)
         new_soup = BeautifulSoup(top_search, "html.parser")
-        title_selector = new_soup.select_one("body > div.container.main-page > div > div > div.panel > table > tbody > tr > td > a")
+        title_selector = new_soup.select_one("td a")
 
         if title_selector is None:
             raise LyricsScraperException("No search results found for the given artist and track title")
@@ -74,18 +79,13 @@ class LyricsScraper:
                 
         lyrics_url = self._get_html(title_link)
         return lyrics_url
-
-        
-        # get href of top search results 
-        # return html of the href page 
         
 
-
-    def scrape_lyrics(self, artist: str, track_title: str) -> str:
+    async def scrape_lyrics(self, artist: str, track_title: str) -> str:
         
         try:
             
-            html =self._get_lyrics_html(artist, track_title)
+            html = await self._get_lyrics_html(artist, track_title)
             soup = BeautifulSoup(html, "html.parser")
             lyrics_container = soup.select_one("div.container.main-page div.row div.col-xs-12.col-lg-8.text-center")
             
