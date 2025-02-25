@@ -20,7 +20,7 @@ async def get_lyrics(
 ):
 
     try: 
-        lyrics = await lyrics_scraper.scrape_lyrics(artist=artist, track_title=track_title)
+        lyrics = lyrics_scraper.scrape_lyrics(artist=artist, track_title=track_title)
         return Lyrics(artist=artist, track_title=track_title, lyrics=lyrics)
     
     except LyricsScraperException as e:
