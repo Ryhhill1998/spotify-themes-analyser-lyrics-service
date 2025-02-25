@@ -42,8 +42,8 @@ class LyricsScraper:
             lyrics_container = soup.select_one("div[data-lyrics-container='true']")
             
             if lyrics_container:
-                lyrics = lyrics_container.get_text(separator="\n", strip=True)
-                
+                lyrics = lyrics_container.get_text(separator=" ").strip()
+
             else:
                 raise LyricsScraperException("Lyrics not found!")
 
