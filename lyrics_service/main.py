@@ -40,4 +40,4 @@ async def get_lyrics(artist: str, track_title: str) -> LyricsResponse:
         lyrics = await app.state.lyrics_scraper.scrape_lyrics(artist=artist, track_title=track_title)
         return LyricsResponse(artist=artist, track_title=track_title, lyrics=lyrics)
     except LyricsScraperException as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Lyrics not found.")
