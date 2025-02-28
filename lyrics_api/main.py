@@ -4,8 +4,8 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI, HTTPException
 
-from lyrics_service.settings import Settings
-from lyrics_service.web_scraper import LyricsScraper, LyricsScraperException
+from lyrics_api.settings import Settings
+from lyrics_api.web_scraper import LyricsScraper, LyricsScraperException
 from pydantic import BaseModel
 
 
