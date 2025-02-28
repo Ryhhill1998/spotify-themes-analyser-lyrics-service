@@ -13,16 +13,13 @@ from pydantic import BaseModel
 async def lifespan(app: FastAPI):
     settings = Settings()
     semaphore = asyncio.Semaphore(settings.max_concurrent_scrapes)
-    client = httpx.AsyncClient(timeout=5)
-    app.state.lyrics_scraper = LyricsScraper(
-        base_url=settings.base_url,
-        headers=settings.headers,
-        semaphore=semaphore,
-        client=client
-    )
-    yield
+    client = httpx.AsyncClient(base_url=settings.base_url, headers=settings.headers)
 
-    await client.aclose()
+    try:
+        app.state.lyrics_scraper = LyricsScraper(semaphore=semaphore, client=client)
+        yield
+    finally:
+        await client.aclose()
 
 
 app = FastAPI(lifespan=lifespan)
