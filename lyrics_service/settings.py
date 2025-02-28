@@ -6,6 +6,7 @@ class Settings(BaseSettings):
 
     base_url: str
     user_agent: str
+    max_concurrent_scrapes: int
 
     @computed_field
     @property 

@@ -1,25 +1,31 @@
-import requests
+import asyncio
+import random
+
+import httpx
 from bs4 import BeautifulSoup
+
 
 class LyricsScraperException(Exception):
 
-    def __init__(self, message: str ):
+    def __init__(self, message: str):
         super().__init__(message)
+
 
 class LyricsScraper:
 
-    def __init__(self, base_url: str, headers : dict[str,str]):
-
+    def __init__(self, base_url: str, headers: dict[str, str], semaphore: asyncio.Semaphore, client: httpx.AsyncClient):
         self.base_url = base_url
         self.headers = headers
+        self.semaphore = semaphore
+        self.client = client
 
-    
-    def _get_html(self, url: str) -> str:
-
-        response = requests.get(url, headers=self.headers)
-        response.raise_for_status()
-        return response.text
-
+    async def _get_html(self, url: str) -> str:
+        async with self.semaphore:
+            print(f"Acquiring semaphore")
+            await asyncio.sleep(random.uniform(0.25, 1))
+            response = await self.client.get(url, headers=self.headers, follow_redirects=True)
+            response.raise_for_status()
+            return response.text
 
     def _get_url(self, artist: str, title: str) -> str:
 
@@ -27,30 +33,26 @@ class LyricsScraper:
             return string.lower().replace(" ", "-")
 
         artist = format_string(artist)
+        artist = artist[0].upper() + artist[1:]
         title = format_string(title)
-        url=f"{self.base_url}/{artist}-{title}-lyrics"
+        url = f"{self.base_url}/{artist}-{title}-lyrics"
 
         return url
 
-    
-    def scrape_lyrics(self, artist: str, track_title: str) -> str:
-        
+    async def scrape_lyrics(self, artist: str, track_title: str) -> str:
+
         try:
             url = self._get_url(artist, track_title)
-            html = self._get_html(url)
+            html = await self._get_html(url)
             soup = BeautifulSoup(html, "html.parser")
-            lyrics_container = soup.select_one("div[data-lyrics-container='true']")
-            
-            if lyrics_container:
-                lyrics = lyrics_container.get_text(separator=" ").strip()
+            lyrics_containers = soup.select("div[data-lyrics-container='true']")
+
+            if lyrics_containers:
+                return "\n".join([container.get_text(separator=" ").strip() for container in lyrics_containers])
 
             else:
                 raise LyricsScraperException("Lyrics not found!")
 
-            return lyrics
+        except Exception:
 
-        except Exception: 
-        
             raise LyricsScraperException(f"An error occurred while scraping the lyrics")
-        
-
