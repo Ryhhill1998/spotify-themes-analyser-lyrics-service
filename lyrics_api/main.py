@@ -5,7 +5,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 
 from lyrics_api.settings import Settings
-from lyrics_api.web_scraper import LyricsScraper, LyricsScraperException
+from lyrics_api.lyrics_scraper import LyricsScraper, LyricsScraperException
 from pydantic import BaseModel
 
 

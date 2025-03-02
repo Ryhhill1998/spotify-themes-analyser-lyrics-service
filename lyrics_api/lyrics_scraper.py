@@ -30,11 +30,11 @@ class LyricsScraper:
     async def _get_html(self, url: str) -> str:
         async with self.semaphore:
             await asyncio.sleep(random.uniform(0.25, 1))
-
             response = await self.client.get(url=url, follow_redirects=True)
-            response.raise_for_status()
 
-            return response.text
+        response.raise_for_status()
+
+        return response.text
 
     async def scrape_lyrics(self, artist: str, track_title: str) -> str:
         try:
