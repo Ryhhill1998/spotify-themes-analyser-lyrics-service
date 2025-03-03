@@ -1,7 +1,8 @@
 import asyncio
 import random
-
+import string
 import httpx
+import re
 from bs4 import BeautifulSoup
 
 
@@ -17,8 +18,11 @@ class LyricsScraper:
 
     @staticmethod
     def _get_url(artist: str, title: str) -> str:
-        def format_string(string: str):
-            return string.lower().replace(" ", "-")
+        def format_string(strings: str):
+            strings = re.sub(r"\s*\(.*?\)\s*", "", strings)
+            punc = string.punctuation.replace("-", "")
+            strings = strings.translate(str.maketrans("", "", punc))
+            return strings.lower().replace(" ", "-")
 
         artist = format_string(artist)
         artist = artist[0].upper() + artist[1:]
@@ -30,11 +34,11 @@ class LyricsScraper:
     async def _get_html(self, url: str) -> str:
         async with self.semaphore:
             await asyncio.sleep(random.uniform(0.25, 1))
-
             response = await self.client.get(url=url, follow_redirects=True)
-            response.raise_for_status()
 
-            return response.text
+        response.raise_for_status()
+
+        return response.text
 
     async def scrape_lyrics(self, artist: str, track_title: str) -> str:
         try:

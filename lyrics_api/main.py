@@ -1,12 +1,16 @@
 import asyncio
 from contextlib import asynccontextmanager
+from typing import Annotated
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 
+from lyrics_api.dependencies import get_data_service
+from lyrics_api.models import LyricsResponse, LyricsRequest
+from lyrics_api.services.data_service import DataService
+from lyrics_api.services.storage_service import StorageService
 from lyrics_api.settings import Settings
-from lyrics_api.web_scraper import LyricsScraper, LyricsScraperException
-from pydantic import BaseModel
+from lyrics_api.services.lyrics_scraper import LyricsScraper, LyricsScraperException
 
 
 @asynccontextmanager
@@ -17,6 +21,8 @@ async def lifespan(app: FastAPI):
 
     try:
         app.state.lyrics_scraper = LyricsScraper(semaphore=semaphore, client=client)
+        app.state.storage_service = StorageService()
+
         yield
     finally:
         await client.aclose()
@@ -25,16 +31,14 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-class LyricsResponse(BaseModel):
-    artist: str
-    track_title: str
-    lyrics: str
-
-
-@app.get('/lyrics')
-async def get_lyrics(artist: str, track_title: str) -> LyricsResponse:
+@app.post('/lyrics-list')
+async def get_lyrics(
+        requested_lyrics: list[LyricsRequest],
+        data_service: Annotated[DataService, Depends(get_data_service)]
+) -> list[LyricsResponse]:
     try:
-        lyrics = await app.state.lyrics_scraper.scrape_lyrics(artist=artist, track_title=track_title)
-        return LyricsResponse(artist=artist, track_title=track_title, lyrics=lyrics)
+        lyrics_list = await data_service.get_lyrics_list(requested_lyrics)
+
+        return lyrics_list
     except LyricsScraperException as e:
         raise HTTPException(status_code=404, detail="Lyrics not found.")
