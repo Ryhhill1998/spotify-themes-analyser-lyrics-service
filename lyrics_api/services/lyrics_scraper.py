@@ -20,7 +20,7 @@ class LyricsScraper:
     def _get_url(artist: str, title: str) -> str:
         def format_string(strings: str):
             strings = re.sub(r"\s*\(.*?\)\s*", "", strings)
-            punc = string.punctuation.replace("-","")
+            punc = string.punctuation.replace("-", "")
             strings = strings.translate(str.maketrans("", "", punc))
             return strings.lower().replace(" ", "-")
 

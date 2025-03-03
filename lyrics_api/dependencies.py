@@ -10,8 +10,8 @@ def get_lyrics_scraper(request: Request) -> LyricsScraper:
     return request.app.state.lyrics_scraper
 
 
-def get_storage_service() -> StorageService:
-    return StorageService()
+def get_storage_service(request: Request) -> StorageService:
+    return request.app.state.storage_service
 
 
 def get_data_service(

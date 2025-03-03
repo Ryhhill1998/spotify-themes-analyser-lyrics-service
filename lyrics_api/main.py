@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from lyrics_api.dependencies import get_data_service
 from lyrics_api.models import LyricsResponse, LyricsRequest
 from lyrics_api.services.data_service import DataService
+from lyrics_api.services.storage_service import StorageService
 from lyrics_api.settings import Settings
 from lyrics_api.services.lyrics_scraper import LyricsScraper, LyricsScraperException
 
@@ -20,6 +21,8 @@ async def lifespan(app: FastAPI):
 
     try:
         app.state.lyrics_scraper = LyricsScraper(semaphore=semaphore, client=client)
+        app.state.storage_service = StorageService()
+
         yield
     finally:
         await client.aclose()
