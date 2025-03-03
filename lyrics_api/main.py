@@ -28,20 +28,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-@app.get('/lyrics')
-async def get_lyrics(
-        artist: str,
-        track_title: str,
-        data_service: Annotated[DataService, Depends(get_data_service)]
-) -> LyricsResponse:
-    try:
-        lyrics = await data_service.get_lyrics(artist=artist, track_title=track_title)
-
-        return lyrics
-    except LyricsScraperException as e:
-        raise HTTPException(status_code=404, detail="Lyrics not found.")
-
-
 @app.post('/lyrics-list')
 async def get_lyrics(
         requested_lyrics: list[LyricsRequest],
