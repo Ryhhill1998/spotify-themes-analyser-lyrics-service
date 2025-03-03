@@ -10,14 +10,10 @@ class DataService:
         self.lyrics_scraper = lyrics_scraper
         self.storage_service = storage_service
 
-    @staticmethod
-    def _create_lyrics_response(artist: str, track_title: str, lyrics: str) -> LyricsResponse:
-        return LyricsResponse(artist=artist, track_title=track_title, lyrics=lyrics)
-
     async def get_lyrics(self, artist: str, track_title: str) -> LyricsResponse:
         lyrics = await self.lyrics_scraper.scrape_lyrics(artist=artist, track_title=track_title)
 
-        lyrics_response = self._create_lyrics_response(artist=artist, track_title=track_title, lyrics=lyrics)
+        lyrics_response = LyricsResponse(artist=artist, track_title=track_title, lyrics=lyrics)
 
         return lyrics_response
 
