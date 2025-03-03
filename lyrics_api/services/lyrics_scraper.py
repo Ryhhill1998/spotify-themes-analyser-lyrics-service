@@ -1,7 +1,8 @@
 import asyncio
 import random
-
+import string
 import httpx
+import re
 from bs4 import BeautifulSoup
 
 
@@ -17,8 +18,11 @@ class LyricsScraper:
 
     @staticmethod
     def _get_url(artist: str, title: str) -> str:
-        def format_string(string: str):
-            return string.lower().replace(" ", "-")
+        def format_string(strings: str):
+            strings = re.sub(r"\s*\(.*?\)\s*", "", strings)
+            punc = string.punctuation.replace("-","")
+            strings = strings.translate(str.maketrans("", "", punc))
+            return strings.lower().replace(" ", "-")
 
         artist = format_string(artist)
         artist = artist[0].upper() + artist[1:]
