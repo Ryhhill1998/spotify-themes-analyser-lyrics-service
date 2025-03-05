@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 
 class LyricsRequest(BaseModel):
-    id: str
+    track_id: str
     artist_name: str
     track_title: str
 

@@ -25,12 +25,11 @@ async def lifespan(app: FastAPI):
 
     try:
         app.state.lyrics_scraper = LyricsScraper(semaphore=semaphore, client=httpx_client)
-        app.state.storage_service = StorageService(client=redis_client)
+        app.state.storage_service = StorageService(redis_client)
 
         yield
     finally:
         await httpx_client.aclose()
-
         await redis_client.aclose()
 
 
@@ -44,7 +43,9 @@ async def get_lyrics(
 ) -> list[LyricsResponse]:
     try:
         lyrics_list = await data_service.get_lyrics_list(requested_lyrics)
-
         return lyrics_list
     except LyricsScraperException as e:
+        print(e)
         raise HTTPException(status_code=404, detail="Lyrics not found.")
+    except Exception as e:
+        print(e)
