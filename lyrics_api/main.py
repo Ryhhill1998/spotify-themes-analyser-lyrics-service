@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 import httpx
+import redis.asyncio as redis
 from fastapi import FastAPI, HTTPException, Depends
 
 from lyrics_api.dependencies import get_data_service
@@ -16,16 +17,21 @@ from lyrics_api.services.lyrics_scraper import LyricsScraper, LyricsScraperExcep
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = Settings()
+
     semaphore = asyncio.Semaphore(settings.max_concurrent_scrapes)
-    client = httpx.AsyncClient(base_url=settings.base_url, headers=settings.headers)
+    httpx_client = httpx.AsyncClient(base_url=settings.base_url, headers=settings.headers)
+
+    redis_client = redis.Redis(host=settings.redis_host, port=settings.redis_port, decode_responses=True)
 
     try:
-        app.state.lyrics_scraper = LyricsScraper(semaphore=semaphore, client=client)
-        app.state.storage_service = StorageService()
+        app.state.lyrics_scraper = LyricsScraper(semaphore=semaphore, client=httpx_client)
+        app.state.storage_service = StorageService(client=redis_client)
 
         yield
     finally:
-        await client.aclose()
+        await httpx_client.aclose()
+
+        await redis_client.aclose()
 
 
 app = FastAPI(lifespan=lifespan)

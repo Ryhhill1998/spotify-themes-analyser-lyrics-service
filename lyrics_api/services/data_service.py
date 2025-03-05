@@ -10,8 +10,17 @@ class DataService:
         self.lyrics_scraper = lyrics_scraper
         self.storage_service = storage_service
 
+    async def _get_lyrics_from_storage(self, track_id: str) -> str:
+        stored_lyrics = await self.storage_service.retrieve_item(track_id)
+
+        return stored_lyrics
+
     async def _get_lyrics(self, track_id: str, artist_name: str, track_title: str) -> LyricsResponse:
-        lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
+        lyrics = await self.storage_service.retrieve_item(track_id)
+
+        if lyrics is None:
+            lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
+            await self.storage_service.store_item(key=track_id, value=lyrics)
 
         lyrics_response = LyricsResponse(id=track_id, artist_name=artist_name, track_title=track_title, lyrics=lyrics)
 

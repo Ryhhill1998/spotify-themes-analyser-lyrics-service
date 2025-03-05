@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     user_agent: str
     max_concurrent_scrapes: int
 
+    redis_host: str
+    redis_port: int
+
     @computed_field
     @property 
     def headers(self) -> dict[str, str]:
