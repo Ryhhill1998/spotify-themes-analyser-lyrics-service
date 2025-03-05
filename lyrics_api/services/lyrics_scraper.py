@@ -40,9 +40,9 @@ class LyricsScraper:
 
         return response.text
 
-    async def scrape_lyrics(self, artist: str, track_title: str) -> str:
+    async def scrape_lyrics(self, artist_name: str, track_title: str) -> str:
         try:
-            url = self._get_url(artist, track_title)
+            url = self._get_url(artist_name, track_title)
             html = await self._get_html(url)
             soup = BeautifulSoup(html, "html.parser")
 
@@ -52,7 +52,8 @@ class LyricsScraper:
                 raise LyricsScraperException("Lyrics not found!")
 
             lyrics = "\n".join([container.get_text(separator=" ").strip() for container in lyrics_containers])
-
+            print(f"Success: {url}")
             return lyrics
         except Exception:
+            print(f"Failure: {url}")
             raise LyricsScraperException(f"An error occurred while scraping the lyrics")

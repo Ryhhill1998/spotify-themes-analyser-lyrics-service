@@ -10,10 +10,10 @@ class DataService:
         self.lyrics_scraper = lyrics_scraper
         self.storage_service = storage_service
 
-    async def get_lyrics(self, artist: str, track_title: str) -> LyricsResponse:
-        lyrics = await self.lyrics_scraper.scrape_lyrics(artist=artist, track_title=track_title)
+    async def _get_lyrics(self, track_id: str, artist_name: str, track_title: str) -> LyricsResponse:
+        lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
 
-        lyrics_response = LyricsResponse(artist=artist, track_title=track_title, lyrics=lyrics)
+        lyrics_response = LyricsResponse(id=track_id, artist_name=artist_name, track_title=track_title, lyrics=lyrics)
 
         return lyrics_response
 
@@ -21,9 +21,17 @@ class DataService:
         tasks = []
 
         for req in requested_lyrics:
-            coroutine = self.get_lyrics(artist=req.artist, track_title=req.track_title)
+            coroutine = self._get_lyrics(track_id=req.id, artist_name=req.artist_name, track_title=req.track_title)
             tasks.append(coroutine)
 
-        lyrics_list = await asyncio.gather(*tasks)
+        lyrics_list = await asyncio.gather(*tasks, return_exceptions=True)
 
-        return lyrics_list
+        successful_results = [item for item in lyrics_list if not isinstance(item, Exception)]
+        failed_count = len(lyrics_list) - len(successful_results)
+        print(f"Success: {len(successful_results)}")
+
+        # Ensure at least 50% success rate
+        if len(successful_results) >= len(lyrics_list) // 2:
+            return successful_results
+        else:
+            raise RuntimeError(f"Too many failures! Only {len(successful_results)} succeeded, {failed_count} failed.")
