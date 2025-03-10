@@ -8,4 +8,4 @@ class LyricsRequest(BaseModel):
 
 
 class LyricsResponse(LyricsRequest):
-    lyrics: str | None
+    lyrics: str
