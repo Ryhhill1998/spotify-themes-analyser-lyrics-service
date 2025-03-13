@@ -11,19 +11,15 @@ class DataService:
         self.storage_service = storage_service
 
     async def _get_lyrics(self, track_id: str, artist_name: str, track_title: str) -> LyricsResponse:
-        try:
-            lyrics = await self.storage_service.retrieve_item(track_id)
+        lyrics = await self.storage_service.retrieve_item(track_id)
 
-            if lyrics is None:
-                lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
-                await self.storage_service.store_item(key=track_id, value=lyrics)
+        if lyrics is None:
+            lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
+            await self.storage_service.store_item(key=track_id, value=lyrics)
 
-            lyrics_response = LyricsResponse(track_id=track_id, artist_name=artist_name, track_title=track_title, lyrics=lyrics)
+        lyrics_response = LyricsResponse(track_id=track_id, artist_name=artist_name, track_title=track_title, lyrics=lyrics)
 
-            return lyrics_response
-        except LyricsScraperException as e:
-            print(e)
-            self.lyrics_scraper.scrape_lyrics()
+        return lyrics_response
 
     async def get_lyrics_list(self, requested_lyrics: list[LyricsRequest]) -> list[LyricsResponse]:
         tasks = [
@@ -37,6 +33,7 @@ class DataService:
         ]
 
         lyrics_list = await asyncio.gather(*tasks, return_exceptions=True)
+        print(f"{lyrics_list = }")
 
         successful_results = [item for item in lyrics_list if isinstance(item, LyricsResponse)]
 

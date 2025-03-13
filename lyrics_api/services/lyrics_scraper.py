@@ -19,8 +19,10 @@ class LyricsScraper:
     @staticmethod
     def _get_url(artist: str, title: str) -> str:
         def format_string(strings: str):
-            strings = re.sub(r"\s*\(.*?\)\s*", "", strings)
-            punc = string.punctuation.replace("-", "")
+            strings = re.sub(r"(\s*\(feat.*?\)\s*|\s*feat.*\s*)", "", strings)
+            strings = strings.replace("$", "-").replace("&", "and")
+            chars_to_remove = "-'`"
+            punc = ''.join(c for c in string.punctuation if c not in chars_to_remove)
             strings = strings.translate(str.maketrans("", "", punc))
             return strings.lower().replace(" ", "-")
 
@@ -54,6 +56,7 @@ class LyricsScraper:
             lyrics = "\n".join([container.get_text(separator=" ").strip() for container in lyrics_containers])
             print(f"Success: {url}")
             return lyrics
-        except Exception:
+        except Exception as e:
             print(f"Failure: {url}")
+            print(e)
             raise LyricsScraperException(f"An error occurred while scraping the lyrics")
