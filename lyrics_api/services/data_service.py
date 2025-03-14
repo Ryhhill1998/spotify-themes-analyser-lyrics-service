@@ -44,4 +44,9 @@ class DataService:
             raise DataServiceException(message)
         except pydantic.ValidationError as e:
             message = f"Failed to create LyricsResponse object - {e}"
+            print(message)
+            raise DataServiceException(message)
+        except Exception as e:
+            message = f"Something went wrong - {e}"
+            print(message)
             raise DataServiceException(message)
