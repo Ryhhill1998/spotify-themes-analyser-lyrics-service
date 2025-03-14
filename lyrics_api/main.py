@@ -36,8 +36,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-@app.get("/lyrics", response_model=LyricsResponse)
-async def get_lyrics_test(
+@app.post("/lyrics", response_model=LyricsResponse)
+async def get_lyrics(
         lyrics_request: LyricsRequest,
         data_service: Annotated[DataService, Depends(get_data_service)]
 ) -> LyricsResponse:
