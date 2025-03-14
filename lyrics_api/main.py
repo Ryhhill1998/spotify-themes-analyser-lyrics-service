@@ -8,10 +8,10 @@ from fastapi import FastAPI, HTTPException, Depends
 
 from lyrics_api.dependencies import get_data_service
 from lyrics_api.models import LyricsResponse, LyricsRequest
-from lyrics_api.services.data_service import DataService
+from lyrics_api.services.data_service import DataService, DataServiceException
 from lyrics_api.services.storage_service import StorageService
 from lyrics_api.settings import Settings
-from lyrics_api.services.lyrics_scraper import LyricsScraper, LyricsScraperException
+from lyrics_api.services.lyrics_scraper import LyricsScraper
 
 
 @asynccontextmanager
@@ -44,6 +44,6 @@ async def get_lyrics(
     try:
         lyrics = await data_service.get_lyrics(lyrics_request)
         return lyrics
-    except LyricsScraperException as e:
+    except DataServiceException as e:
         print(e)
         raise HTTPException(status_code=404, detail="Lyrics not found.")
