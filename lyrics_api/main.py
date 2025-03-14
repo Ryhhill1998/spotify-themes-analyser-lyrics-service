@@ -42,12 +42,7 @@ async def get_lyrics(
         data_service: Annotated[DataService, Depends(get_data_service)]
 ) -> LyricsResponse:
     try:
-        lyrics = await data_service.get_lyrics(
-            track_id=lyrics_request.track_id,
-            artist_name=lyrics_request.artist_name,
-            track_title=lyrics_request.track_title
-        )
-
+        lyrics = await data_service.get_lyrics(lyrics_request)
         return lyrics
     except LyricsScraperException as e:
         print(e)
