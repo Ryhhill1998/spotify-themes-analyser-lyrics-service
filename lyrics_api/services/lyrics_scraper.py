@@ -1,6 +1,8 @@
 import asyncio
 import random
 import string
+import unicodedata
+
 import httpx
 import re
 from bs4 import BeautifulSoup
@@ -18,16 +20,37 @@ class LyricsScraper:
 
     @staticmethod
     def _get_url(artist: str, title: str) -> str:
-        def format_string(strings: str):
-            strings = re.sub(r"(\s*\(feat.*?\)\s*|\s*feat.*\s*)", "", strings)
-            strings = strings.replace("$", "-").replace("&", "and")
-            chars_to_remove = "-'`"
-            punc = ''.join(c for c in string.punctuation if c not in chars_to_remove)
-            strings = strings.translate(str.maketrans("", "", punc))
-            return strings.lower().replace(" ", "-")
+        def format_string(s: str) -> str:
+            """Formats artist_name and track_title strings into appropriate url format"""
+
+            # Normalize Unicode characters
+            s = unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('ascii')
+
+            def handle_parentheses(match):
+                """Removes content if it contains 'feat' or 'with'"""
+
+                content = match.group(1).lower()
+                return "" if "feat" in content or "with" in content else content
+
+            s = re.sub(r"\(([^)]*)\)", handle_parentheses, s)
+
+            # Remove ' - feat' and 'feat'
+            s = re.sub(r"\s*-\s*feat.*", "", s, flags=re.IGNORECASE)
+            s = re.sub(r"\s*feat.*", "", s, flags=re.IGNORECASE)
+
+            # Replace special characters and punctuation
+            s = s.replace("$", "-").replace("&", "and")
+            s = s.translate(str.maketrans("", "", string.punctuation.replace("-", "")))
+
+            # Convert to lowercase, replace hyphens with '-' and remove leading/trailing '-'
+            s = s.lower().replace(" ", "-").strip("-")
+
+            s = re.sub(r'-+', '-', s)
+
+            return s
 
         artist = format_string(artist)
-        artist = artist[0].upper() + artist[1:]
+        artist = artist[0].upper() + artist[1:] if artist else ""
         title = format_string(title)
         url = f"/{artist}-{title}-lyrics"
 
@@ -50,10 +73,12 @@ class LyricsScraper:
 
             lyrics_containers = soup.select("div[data-lyrics-container='true']")
 
-            if not lyrics_containers:
-                raise LyricsScraperException("Lyrics not found!")
+            lyrics = ""
 
-            lyrics = "\n".join([container.get_text(separator=" ").strip() for container in lyrics_containers])
+            for container in lyrics_containers:
+                inner_html = "".join(str(item) for item in container.contents)
+                lyrics += inner_html + "<br/><br/>"
+
             print(f"Success: {url}")
             return lyrics
         except Exception as e:
