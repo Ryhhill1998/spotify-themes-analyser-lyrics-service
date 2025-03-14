@@ -11,30 +11,16 @@ class DataService:
         self.lyrics_scraper = lyrics_scraper
         self.storage_service = storage_service
 
-    async def get_lyrics_test(self, artist_name: str, track_title: str) -> LyricsResponse:
-        lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
+    async def get_lyrics(self, track_id: str, artist_name: str, track_title: str) -> LyricsResponse:
+        lyrics = await self.storage_service.retrieve_item(track_id)
 
-        lyrics_response = LyricsResponse(track_id=str(uuid.uuid4()), artist_name=artist_name, track_title=track_title, lyrics=lyrics)
-
-        return lyrics_response
-
-    async def _get_lyrics(self, track_id: str, artist_name: str, track_title: str) -> LyricsResponse:
-        lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
+        if lyrics is None:
+            lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
+            await self.storage_service.store_item(key=track_id, value=lyrics)
 
         lyrics_response = LyricsResponse(track_id=track_id, artist_name=artist_name, track_title=track_title, lyrics=lyrics)
 
         return lyrics_response
-
-    # async def _get_lyrics(self, track_id: str, artist_name: str, track_title: str) -> LyricsResponse:
-    #     lyrics = await self.storage_service.retrieve_item(track_id)
-    #
-    #     if lyrics is None:
-    #         lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
-    #         await self.storage_service.store_item(key=track_id, value=lyrics)
-    #
-    #     lyrics_response = LyricsResponse(track_id=track_id, artist_name=artist_name, track_title=track_title, lyrics=lyrics)
-    #
-    #     return lyrics_response
 
     async def get_lyrics_list(self, requested_lyrics: list[LyricsRequest]) -> list[LyricsResponse]:
         tasks = [
