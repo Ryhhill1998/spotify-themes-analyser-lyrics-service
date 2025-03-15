@@ -1,8 +1,13 @@
-import asyncio
+import pydantic
 
 from lyrics_api.models import LyricsResponse, LyricsRequest
-from lyrics_api.services.lyrics_scraper import LyricsScraper
-from lyrics_api.services.storage_service import StorageService
+from lyrics_api.services.lyrics_scraper import LyricsScraper, LyricsScraperException
+from lyrics_api.services.storage_service import StorageService, StorageServiceException
+
+
+class DataServiceException(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
 
 
 class DataService:
@@ -10,36 +15,68 @@ class DataService:
         self.lyrics_scraper = lyrics_scraper
         self.storage_service = storage_service
 
-    async def _get_lyrics(self, track_id: str, artist_name: str, track_title: str) -> LyricsResponse:
-        lyrics = await self.storage_service.retrieve_item(track_id)
+    async def get_lyrics(self, lyrics_request: LyricsRequest) -> LyricsResponse:
+        track_id = lyrics_request.track_id
+        artist_name = lyrics_request.artist_name
+        track_title = lyrics_request.track_title
 
-        if lyrics is None:
-            lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
-            await self.storage_service.store_item(key=track_id, value=lyrics)
+        try:
+            lyrics = await self.storage_service.retrieve_item(track_id)
 
-        lyrics_response = LyricsResponse(track_id=track_id, artist_name=artist_name, track_title=track_title, lyrics=lyrics)
+            if lyrics is None:
+                lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
+                # await self.storage_service.store_item(key=track_id, value=lyrics)
 
-        return lyrics_response
-
-    async def get_lyrics_list(self, requested_lyrics: list[LyricsRequest]) -> list[LyricsResponse]:
-        tasks = [
-            self._get_lyrics(
-                track_id=req.track_id,
-                artist_name=req.artist_name,
-                track_title=req.track_title
+            lyrics_response = LyricsResponse(
+                track_id=track_id,
+                artist_name=artist_name,
+                track_title=track_title,
+                lyrics=lyrics
             )
-            for req
-            in requested_lyrics
-        ]
 
-        lyrics_list = await asyncio.gather(*tasks, return_exceptions=True)
+            return lyrics_response
+        except (LyricsScraperException, StorageServiceException) as e:
+            message = (
+                f"Failed to retrieve lyrics for track_id: {track_id}, artist_name: {artist_name}, "
+                f"track_title: {track_title} - {e}"
+            )
+            print(message)
+            raise DataServiceException(message)
+        except pydantic.ValidationError as e:
+            message = f"Failed to create LyricsResponse object - {e}"
+            print(message)
+            raise DataServiceException(message)
+        except Exception as e:
+            message = f"Something went wrong - {e}"
+            print(message)
+            raise DataServiceException(message)
 
-        successful_results = [item for item in lyrics_list if isinstance(item, LyricsResponse)]
-        failed_count = len(lyrics_list) - len(successful_results)
-        print(f"Success: {len(successful_results)}")
+    async def get_lyrics_test(self, artist_name: str, track_title: str) -> LyricsResponse:
+        track_id = "1"
 
-        # Ensure at least 50% success rate
-        if len(successful_results) >= len(lyrics_list) // 2:
-            return successful_results
-        else:
-            raise RuntimeError(f"Too many failures! Only {len(successful_results)} succeeded, {failed_count} failed.")
+        try:
+            lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
+
+            lyrics_response = LyricsResponse(
+                track_id=track_id,
+                artist_name=artist_name,
+                track_title=track_title,
+                lyrics=lyrics
+            )
+
+            return lyrics_response
+        except (LyricsScraperException, StorageServiceException) as e:
+            message = (
+                f"Failed to retrieve lyrics for track_id: {track_id}, artist_name: {artist_name}, "
+                f"track_title: {track_title} - {e}"
+            )
+            print(message)
+            raise DataServiceException(message)
+        except pydantic.ValidationError as e:
+            message = f"Failed to create LyricsResponse object - {e}"
+            print(message)
+            raise DataServiceException(message)
+        except Exception as e:
+            message = f"Something went wrong - {e}"
+            print(message)
+            raise DataServiceException(message)
