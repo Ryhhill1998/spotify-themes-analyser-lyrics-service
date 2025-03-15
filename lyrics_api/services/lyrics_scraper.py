@@ -193,7 +193,7 @@ class LyricsScraper:
             for container in lyrics_containers:
                 for element in container.contents:
                     if isinstance(element, Tag):
-                        if element.name in ["br", "i"]:
+                        if element.name in ["br", "i", "b"]:
                             cleaned_lyrics.append(str(element))
 
                         elif element.name == "a":
