@@ -5,7 +5,7 @@ import unicodedata
 
 import httpx
 import re
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 
 class LyricsScraperException(Exception):
@@ -188,11 +188,24 @@ class LyricsScraper:
             if not lyrics_containers:
                 raise LyricsScraperException(f"Lyrics not found for {artist_name} - {track_title}")
 
-            lyrics = ""
+            cleaned_lyrics = []
 
             for container in lyrics_containers:
-                inner_html = "".join(str(item) for item in container.contents)
-                lyrics += inner_html + "<br/><br/>"
+                for element in container.contents:
+                    if isinstance(element, Tag):
+                        if element.name in ["br", "i"]:
+                            cleaned_lyrics.append(str(element))
+
+                        elif element.name == "a":
+                            for el in element.find("span"):
+                                cleaned_lyrics.append(str(el))
+
+                    else:
+                        cleaned_lyrics.append(str(element))
+
+                cleaned_lyrics.append("<br/>")
+
+            lyrics = "".join(cleaned_lyrics)
 
             print(f"Success: {url}")
             return lyrics

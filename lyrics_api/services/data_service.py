@@ -25,7 +25,37 @@ class DataService:
 
             if lyrics is None:
                 lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
-                await self.storage_service.store_item(key=track_id, value=lyrics)
+                # await self.storage_service.store_item(key=track_id, value=lyrics)
+
+            lyrics_response = LyricsResponse(
+                track_id=track_id,
+                artist_name=artist_name,
+                track_title=track_title,
+                lyrics=lyrics
+            )
+
+            return lyrics_response
+        except (LyricsScraperException, StorageServiceException) as e:
+            message = (
+                f"Failed to retrieve lyrics for track_id: {track_id}, artist_name: {artist_name}, "
+                f"track_title: {track_title} - {e}"
+            )
+            print(message)
+            raise DataServiceException(message)
+        except pydantic.ValidationError as e:
+            message = f"Failed to create LyricsResponse object - {e}"
+            print(message)
+            raise DataServiceException(message)
+        except Exception as e:
+            message = f"Something went wrong - {e}"
+            print(message)
+            raise DataServiceException(message)
+
+    async def get_lyrics_test(self, artist_name: str, track_title: str) -> LyricsResponse:
+        track_id = "1"
+
+        try:
+            lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
 
             lyrics_response = LyricsResponse(
                 track_id=track_id,
