@@ -191,21 +191,20 @@ class LyricsScraper:
             cleaned_lyrics = []
 
             for container in lyrics_containers:
+                section = ""
                 for element in container.contents:
                     if isinstance(element, Tag):
                         if element.name in ["br", "i", "b"]:
-                            cleaned_lyrics.append(str(element))
-
+                            section += str(element)
                         elif element.name == "a":
                             for el in element.find("span"):
-                                cleaned_lyrics.append(str(el))
-
+                                section += str(el)
                     else:
-                        cleaned_lyrics.append(str(element))
+                        section += str(element)
 
-                cleaned_lyrics.append("<br/>")
+                cleaned_lyrics.append(section)
 
-            lyrics = "".join(cleaned_lyrics)
+            lyrics = "<br/>".join(cleaned_lyrics)
 
             print(f"Success: {url}")
             return lyrics
