@@ -43,21 +43,6 @@ async def get_lyrics(
 ) -> LyricsResponse:
     try:
         lyrics = await data_service.get_lyrics(lyrics_request)
-        print(f"LYRICS = {lyrics.model_dump()}")
-        return lyrics
-    except DataServiceException as e:
-        print(e)
-        raise HTTPException(status_code=404, detail="Lyrics not found.")
-
-
-@app.get("/lyrics-test", response_model=LyricsResponse)
-async def get_lyrics(
-        artist_name: str,
-        track_title: str,
-        data_service: Annotated[DataService, Depends(get_data_service)]
-) -> LyricsResponse:
-    try:
-        lyrics = await data_service.get_lyrics_test(artist_name=artist_name, track_title=track_title)
         return lyrics
     except DataServiceException as e:
         print(e)
