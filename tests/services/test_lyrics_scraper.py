@@ -7,9 +7,6 @@ import pytest
 
 from lyrics_api.services.lyrics_scraper import LyricsScraper
 
-# 5. Test _get_html raises LyricsScraperException if request fails.
-# 6. Test _get_html raises LyricsScraperException if response status code not 2XX.
-# 7. Test _get_html returns expected string.
 # 8. Test _extract_lyrics_containers returns an empty list if no lyrics containers found.
 # 9. Test _extract_lyrics_containers returns expected list.
 # 10. Test _clean_lyrics_text removes all tags except <br>, <i> and <b> and keeps all raw text.
@@ -21,12 +18,16 @@ from lyrics_api.services.lyrics_scraper import LyricsScraper
 
 
 @pytest.fixture
-def lyrics_scraper() -> LyricsScraper:
+def mock_client() -> AsyncMock:
+    return AsyncMock(spec=httpx.AsyncClient)
+
+
+@pytest.fixture
+def lyrics_scraper(mock_client) -> LyricsScraper:
     """Fixture to provide a LyricsScraper instance with a mock client and semaphore."""
 
     semaphore = asyncio.Semaphore(10)
-    client = AsyncMock(spec=httpx.AsyncClient)
-    scraper = LyricsScraper(semaphore=semaphore, client=client)
+    scraper = LyricsScraper(semaphore=semaphore, client=mock_client)
     return scraper
 
 
@@ -76,17 +77,53 @@ def test_get_url(lyrics_scraper, artist, title, expected):
 # 3. Test _make_limited_request calls httpx AsyncClient get method.
 # 4. Test _make_limited_request stops more than semaphore limit requests occuring simultaneously.
 @pytest.mark.asyncio
-async def test_make_limited_request(lyrics_scraper):
+async def test_make_limited_request(lyrics_scraper, mock_client):
     """Test that _make_limited_request properly makes a GET request."""
 
     mock_response = AsyncMock(spec=httpx.Response)
     mock_response.status_code = 200
     mock_response.text = "<html></html>"
-    lyrics_scraper.client.get.return_value = mock_response
+    mock_client.get.return_value = mock_response
     url = "https://example.com/test"
 
-    response = await lyrics_scraper._make_limited_request(url)
+    response = await lyrics_scraper._make_limited_request(url=url, delay=0)
 
     assert response.status_code == 200
     assert response.text == "<html></html>"
-    lyrics_scraper.client.get.assert_called_with(url=url, follow_redirects=True)
+    mock_client.get.assert_called_with(url=url, follow_redirects=True)
+
+
+@pytest.mark.asyncio
+async def test_make_limited_request_restricts_concurrent_requests(lyrics_scraper, mock_client):
+    mock_response = AsyncMock(spec=httpx.Response)
+    mock_response.status_code = 200
+    mock_response.text = "<html></html>"
+    mock_client.get.return_value = mock_response
+    url = "https://example.com/test"
+    # create tasks
+    tasks = [lyrics_scraper._make_limited_request(url=url, delay=0.25) for _ in range(5)]
+    # set semaphore counter to value equal to tasks length
+    lyrics_scraper.semaphore = asyncio.Semaphore(5)
+
+    start_unrestricted = time.perf_counter()
+    await asyncio.gather(*tasks)
+    end_unrestricted = time.perf_counter()
+    diff_unrestricted = end_unrestricted - start_unrestricted
+
+    # create tasks
+    tasks = [lyrics_scraper._make_limited_request(url=url, delay=0.25) for _ in range(5)]
+    # reduce semaphore counter to value below tasks length
+    lyrics_scraper.semaphore = asyncio.Semaphore(3)
+    start_restricted = time.perf_counter()
+    await asyncio.gather(*tasks)
+    end_restricted = time.perf_counter()
+    diff_restricted = end_restricted - start_restricted
+
+    assert diff_restricted > diff_unrestricted
+
+
+# -------------------- GET HTML -------------------- #
+# 5. Test _get_html raises LyricsScraperException if request fails.
+# 6. Test _get_html raises LyricsScraperException if response status code not 2XX.
+# 7. Test _get_html returns expected string.
+

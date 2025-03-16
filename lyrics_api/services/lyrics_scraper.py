@@ -110,7 +110,7 @@ class LyricsScraper:
 
         return f"/{artist}-{title}-lyrics"
 
-    async def _make_limited_request(self, url: str) -> Response:
+    async def _make_limited_request(self, url: str, delay: float) -> Response:
         """
         Makes an asynchronous HTTP GET request with concurrency control.
 
@@ -137,7 +137,7 @@ class LyricsScraper:
         """
 
         async with self.semaphore:
-            await asyncio.sleep(random.uniform(0.25, 1))
+            await asyncio.sleep(delay)
             response = await self.client.get(url=url, follow_redirects=True)
 
         return response
@@ -163,7 +163,7 @@ class LyricsScraper:
         """
 
         try:
-            response = await self._make_limited_request(url)
+            response = await self._make_limited_request(url=url, delay=random.uniform(0.25, 1))
             response.raise_for_status()
             return response.text
         except httpx.HTTPStatusError as e:
