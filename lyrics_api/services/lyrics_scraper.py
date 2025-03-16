@@ -6,6 +6,7 @@ import unicodedata
 import httpx
 import re
 from bs4 import BeautifulSoup, Tag
+from httpx import Response
 
 
 class LyricsScraperException(Exception):
@@ -44,9 +45,50 @@ class LyricsScraper:
         self.client = client
 
     @staticmethod
-    def _get_url(artist: str, title: str) -> str:
+    def _format_string_for_url(s: str) -> str:
         """
-        Generates a formatted URL for retrieving lyrics based on the artist and song title.
+        Formats the input string into appropriate format.
+
+        Parameters
+        ----------
+        s : str
+            The string to format.
+
+        Returns
+        -------
+        str
+            The formatted string suitable for URL construction.
+        """
+
+        # Normalize Unicode characters
+        s = unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('ascii')
+
+        def handle_parentheses(match):
+            """Removes content if it contains 'feat' or 'with'"""
+
+            content = match.group(1).lower()
+            return "" if "feat" in content or "with" in content else content
+
+        s = re.sub(r"\(([^)]*)\)", handle_parentheses, s)
+
+        # Remove ' - feat' and 'feat'
+        s = re.sub(r"\s*-\s*feat.*", "", s, flags=re.IGNORECASE)
+        s = re.sub(r"\s*feat.*", "", s, flags=re.IGNORECASE)
+
+        # Replace special characters and punctuation
+        s = s.replace("$", "-").replace("&", "and")
+        s = s.translate(str.maketrans("", "", string.punctuation.replace("-", "")))
+
+        # Convert to lowercase, replace hyphens with '-' and remove leading/trailing '-'
+        s = s.lower().replace(" ", "-").strip("-")
+
+        s = re.sub(r'-+', '-', s)
+
+        return s
+
+    def _get_url(self, artist: str, title: str) -> str:
+        """
+        Generates a formatted URL for retrieving lyrics.
 
         Parameters
         ----------
@@ -59,53 +101,46 @@ class LyricsScraper:
         -------
         str
             The formatted URL path for fetching lyrics.
+        """
+
+        artist = self._format_string_for_url(artist)
+        title = self._format_string_for_url(title)
+
+        artist = artist[0].upper() + artist[1:]
+
+        return f"/{artist}-{title}-lyrics"
+
+    async def _make_limited_request(self, url: str) -> Response:
+        """
+        Makes an asynchronous HTTP GET request with concurrency control.
+
+        The request is rate-limited using a semaphore to control the number of concurrent
+        requests. A random delay is added before making the request to reduce the likelihood
+        of triggering anti-scraping mechanisms.
+
+        Parameters
+        ----------
+        url : str
+            The URL to send the GET request to.
+
+        Returns
+        -------
+        Response
+            The HTTP response object received from the request.
 
         Raises
         ------
-        LyricsScraperException
-            If Unicode normalisation of input string fails.
+        httpx.RequestError
+            If there is a network-related issue during the request.
+        httpx.HTTPStatusError
+            If the server returns a non-2XX HTTP status code.
         """
 
-        def format_string(s: str) -> str:
-            """Formats artist_name and track_title strings into appropriate url format"""
+        async with self.semaphore:
+            await asyncio.sleep(random.uniform(0.25, 1))
+            response = await self.client.get(url=url, follow_redirects=True)
 
-            # Normalize Unicode characters
-            s = unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('ascii')
-
-            def handle_parentheses(match):
-                """Removes content if it contains 'feat' or 'with'"""
-
-                content = match.group(1).lower()
-                return "" if "feat" in content or "with" in content else content
-
-            s = re.sub(r"\(([^)]*)\)", handle_parentheses, s)
-
-            # Remove ' - feat' and 'feat'
-            s = re.sub(r"\s*-\s*feat.*", "", s, flags=re.IGNORECASE)
-            s = re.sub(r"\s*feat.*", "", s, flags=re.IGNORECASE)
-
-            # Replace special characters and punctuation
-            s = s.replace("$", "-").replace("&", "and")
-            s = s.translate(str.maketrans("", "", string.punctuation.replace("-", "")))
-
-            # Convert to lowercase, replace hyphens with '-' and remove leading/trailing '-'
-            s = s.lower().replace(" ", "-").strip("-")
-
-            s = re.sub(r'-+', '-', s)
-
-            return s
-
-        try:
-            artist = format_string(artist)
-            artist = artist[0].upper() + artist[1:] if artist else ""
-            title = format_string(title)
-            url = f"/{artist}-{title}-lyrics"
-
-            return url
-        except UnicodeError as e:
-            message = f"Failed to decode character - {e}"
-            print(message)
-            raise LyricsScraperException(message)
+        return response
 
     async def _get_html(self, url: str) -> str:
         """
@@ -124,37 +159,87 @@ class LyricsScraper:
         Raises
         ------
         LyricsScraperException
-            If the request fails or the response cannot be decoded.
+            If the request fails or another exception occurs.
         """
 
         try:
-            async with self.semaphore:
-                await asyncio.sleep(random.uniform(0.25, 1))
-                response = await self.client.get(url=url, follow_redirects=True)
-
+            response = await self._make_limited_request(url)
             response.raise_for_status()
-
             return response.text
-        except httpx.InvalidURL as e:
-            message = f"Invalid URL - {e}"
-            print(message)
-            raise LyricsScraperException(message)
-        except httpx.TimeoutException as e:
-            message = f"Request timed out - {e}"
+        except httpx.HTTPStatusError as e:
+            message = f"Non-2XX status code - {e}"
             print(message)
             raise LyricsScraperException(message)
         except httpx.RequestError as e:
             message = f"Request failed - {e}"
             print(message)
             raise LyricsScraperException(message)
-        except httpx.HTTPStatusError as e:
-            message = f"Non-2XX status code - {e}"
+        except Exception as e:
+            message = f"Failed to retrieve HTML - {e}"
             print(message)
             raise LyricsScraperException(message)
-        except UnicodeDecodeError as e:
-            message = f"Failed to decode response - {e}"
-            print(message)
-            raise LyricsScraperException(message)
+
+    @staticmethod
+    def _extract_lyrics_containers(html: str) -> list[Tag]:
+        """
+        Extracts lyric containers from the provided HTML.
+
+        The function searches for `<div>` elements with the attribute `data-lyrics-container="true"`which typically
+        contains the lyrics on the target website.
+
+        Parameters
+        ----------
+        html : str
+            The raw HTML content of the lyrics page.
+
+        Returns
+        -------
+        list of Tag objects
+            A list of BeautifulSoup `Tag` objects containing the lyrics.
+        """
+
+        soup = BeautifulSoup(html, "html.parser")
+        lyrics_containers = soup.select("div[data-lyrics-container='true']")
+
+        return lyrics_containers
+
+    @staticmethod
+    def _clean_lyrics_text(lyrics_containers: list[Tag]) -> str:
+        """
+        Cleans and formats the extracted lyrics.
+
+        This method processes the extracted HTML elements containing the lyrics, preserving
+        formatting elements such as `<br>`, `<i>`, and `<b>`. Hyperlinks are handled by extracting
+        their inner text.
+
+        Parameters
+        ----------
+        lyrics_containers : list of Tag
+            A list of BeautifulSoup `Tag` objects containing the lyrics.
+
+        Returns
+        -------
+        str
+            The cleaned lyrics, formatted as an HTML string with line breaks.
+        """
+
+        cleaned_lyrics = []
+
+        for container in lyrics_containers:
+            section = ""
+
+            for element in container.contents:
+                if isinstance(element, Tag):
+                    if element.name in ["br", "i", "b"]:
+                        section += str(element)
+                    elif element.name == "a":
+                        section += "".join([str(el) for el in element.find("span")])
+                else:
+                    section += str(element)
+
+            cleaned_lyrics.append(section)
+
+        return "<br/>".join(cleaned_lyrics)
 
     async def scrape_lyrics(self, artist_name: str, track_title: str) -> str:
         """
@@ -181,32 +266,14 @@ class LyricsScraper:
         try:
             url = self._get_url(artist_name, track_title)
             html = await self._get_html(url)
-            soup = BeautifulSoup(html, "html.parser")
-
-            lyrics_containers = soup.select("div[data-lyrics-container='true']")
+            lyrics_containers = self._extract_lyrics_containers(html)
 
             if not lyrics_containers:
                 raise LyricsScraperException(f"Lyrics not found for {artist_name} - {track_title}")
 
-            cleaned_lyrics = []
+            lyrics = self._clean_lyrics_text(lyrics_containers)
+            print(f"Successfully scraped lyrics for {artist_name} - {track_title}")
 
-            for container in lyrics_containers:
-                section = ""
-                for element in container.contents:
-                    if isinstance(element, Tag):
-                        if element.name in ["br", "i", "b"]:
-                            section += str(element)
-                        elif element.name == "a":
-                            for el in element.find("span"):
-                                section += str(el)
-                    else:
-                        section += str(element)
-
-                cleaned_lyrics.append(section)
-
-            lyrics = "<br/>".join(cleaned_lyrics)
-
-            print(f"Success: {url}")
             return lyrics
         except LyricsScraperException as e:
             print(f"Failure: {url}")
