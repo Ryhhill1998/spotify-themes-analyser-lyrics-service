@@ -19,3 +19,6 @@ def get_data_service(
         storage_service: Annotated[StorageService, Depends(get_storage_service)]
 ) -> DataService:
     return DataService(lyrics_scraper=lyrics_scraper, storage_service=storage_service)
+
+
+DataServiceDependency = Annotated[DataService, Depends(get_data_service)]

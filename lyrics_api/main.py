@@ -1,17 +1,13 @@
 import asyncio
 from contextlib import asynccontextmanager
-from typing import Annotated
-
 import httpx
 import redis.asyncio as redis
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI
 
-from lyrics_api.dependencies import get_data_service
-from lyrics_api.models import LyricsResponse, LyricsRequest
-from lyrics_api.services.data_service import DataService, DataServiceException
 from lyrics_api.services.storage_service import StorageService
 from lyrics_api.settings import Settings
 from lyrics_api.services.lyrics_scraper import LyricsScraper
+from lyrics_api.routers import lyrics
 
 
 @asynccontextmanager
@@ -35,15 +31,4 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-
-@app.post("/lyrics", response_model=LyricsResponse)
-async def get_lyrics(
-        lyrics_request: LyricsRequest,
-        data_service: Annotated[DataService, Depends(get_data_service)]
-) -> LyricsResponse:
-    try:
-        lyrics = await data_service.get_lyrics(lyrics_request)
-        return lyrics
-    except DataServiceException as e:
-        print(e)
-        raise HTTPException(status_code=404, detail="Lyrics not found.")
+app.include_router(lyrics.router)
