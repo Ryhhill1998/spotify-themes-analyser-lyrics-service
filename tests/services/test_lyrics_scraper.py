@@ -1,15 +1,14 @@
 import asyncio
 import time
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import httpx
 import pytest
+from bs4 import BeautifulSoup
 
-from lyrics_api.services.lyrics_scraper import LyricsScraper
+from lyrics_api.services.lyrics_scraper import LyricsScraper, LyricsScraperException
 
-# 8. Test _extract_lyrics_containers returns an empty list if no lyrics containers found.
-# 9. Test _extract_lyrics_containers returns expected list.
-# 10. Test _clean_lyrics_text removes all tags except <br>, <i> and <b> and keeps all raw text.
+
 # 11. Test scrape_lyrics raises LyricsScraperException if no lyrics containers found.
 # 12. Test scrape_lyrics raises LyricsScraperException if exception occurs in _get_url.
 # 13. Test scrape_lyrics raises LyricsScraperException if exception occurs in _get_html.
@@ -124,6 +123,127 @@ async def test_make_limited_request_restricts_concurrent_requests(lyrics_scraper
 
 # -------------------- GET HTML -------------------- #
 # 5. Test _get_html raises LyricsScraperException if request fails.
-# 6. Test _get_html raises LyricsScraperException if response status code not 2XX.
+# 6. Test _get_html raises LyricsScraperException if general exception occurs.
 # 7. Test _get_html returns expected string.
+@pytest.mark.asyncio
+async def test_get_html_request_failure(lyrics_scraper):
+    mock_method = AsyncMock()
+    mock_method.side_effect = httpx.RequestError("Test")
+    lyrics_scraper._make_limited_request = mock_method
+    url = "https://example.com/test"
 
+    with pytest.raises(LyricsScraperException, match="Request failed"):
+        await lyrics_scraper._get_html(url=url)
+
+
+@pytest.mark.asyncio
+async def test_get_html_request_failure(lyrics_scraper):
+    mock_method = AsyncMock()
+    mock_method.side_effect = Exception("Test")
+    lyrics_scraper._make_limited_request = mock_method
+    url = "https://example.com/test"
+
+    with pytest.raises(LyricsScraperException, match="Failed to retrieve HTML"):
+        await lyrics_scraper._get_html(url=url)
+
+
+@pytest.mark.asyncio
+async def test_get_html_success(lyrics_scraper):
+    """Test successful retrieval of HTML content."""
+    mock_response = Mock(spec=httpx.Response)
+    mock_response.status_code = 200
+    mock_response.text = "<html>Test</html>"
+    mock_method = AsyncMock()
+    mock_method.return_value = mock_response
+    lyrics_scraper._make_limited_request = mock_method
+    url = "https://example.com/test"
+
+    html = await lyrics_scraper._get_html(url)
+
+    assert html == "<html>Test</html>"
+
+
+# -------------------- EXTRACT LYRICS CONTAINERS -------------------- #
+# 1. Test _extract_lyrics_containers returns expected list where tags have data-lyrics-container data attribute set.
+@pytest.mark.parametrize(
+    "html_input, expected_output",
+    [
+        (
+                """
+                    <html>
+                        <body>
+                            <div data-lyrics-container="true">First line of lyrics</div>
+                            <div data-lyrics-container="true">Second line of lyrics</div>
+                        </body>
+                    </html>
+                """,
+                [
+                    '<div data-lyrics-container="true">First line of lyrics</div>',
+                    '<div data-lyrics-container="true">Second line of lyrics</div>'
+                ]
+        ),
+        (
+                """
+                    <html>
+                        <body>
+                            <div class="data-lyrics-container">First line of lyrics</div>
+                            <div>Second line of lyrics</div>
+                        </body>
+                    </html>
+                """,
+                []
+        ),
+    ]
+)
+def test_extract_lyrics_containers_returns_expected_list(lyrics_scraper, html_input, expected_output):
+    res = lyrics_scraper._extract_lyrics_containers(html_input)
+
+    assert [str(entry) for entry in res] == expected_output
+
+
+# -------------------- CLEAN LYRICS TEXT -------------------- #
+# 10. Test _clean_lyrics_text removes all tags except <br>, <i> and <b> and keeps all raw text.
+@pytest.mark.parametrize(
+    "html_input, expected_output",
+    [
+        (
+                """
+                <div data-lyrics-container="true">First line of lyrics</div>
+                <div data-lyrics-container="true">Second line of lyrics</div>
+                """,
+                "First line of lyrics<br/>Second line of lyrics"
+        ),
+        (
+
+                "",
+                ""
+        ),
+        (
+
+                """<div data-lyrics-container="true">[Bridge: Demi Lovato & <i>John O'Callaghan</i>]<br/></div>""",
+                "[Bridge: Demi Lovato & <i>John O'Callaghan</i>]<br/>"
+        ),
+        (
+                """<div data-lyrics-container="true">(<i>You're all that I see, you're all that I see</i>)</div>""",
+                "(<i>You're all that I see, you're all that I see</i>)"
+        ),
+        (
+                """<div data-lyrics-container="true">(<b>You're all that I see, you're all that I see</b>)</div>""",
+                "(<b>You're all that I see, you're all that I see</b>)"
+        ),
+        (
+                """<div data-lyrics-container="true"><span class="test">Random text</span></div>""",
+                ""
+        ),
+(
+                """<div data-lyrics-container="true"><a><span class="test">Random text</span></a></div>""",
+                "Random text"
+        ),
+    ]
+)
+def test_clean_lyrics_text_returns_expected_string(lyrics_scraper, html_input, expected_output):
+    soup = BeautifulSoup(html_input, "html.parser")
+    containers = soup.select("div[data-lyrics-container='true']")
+    res = lyrics_scraper._clean_lyrics_text(containers)
+
+    assert res == expected_output
