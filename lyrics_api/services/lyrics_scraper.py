@@ -263,15 +263,21 @@ class LyricsScraper:
             If an error occurs while scraping the lyrics.
         """
 
+        url = None
+
         try:
             url = self._get_url(artist_name, track_title)
             html = await self._get_html(url)
             lyrics_containers = self._extract_lyrics_containers(html)
 
             if not lyrics_containers:
-                raise LyricsScraperException(f"Lyrics not found for {artist_name} - {track_title}")
+                raise LyricsScraperException(f"Lyrics containers not found for {artist_name} - {track_title}")
 
             lyrics = self._clean_lyrics_text(lyrics_containers)
+
+            if not lyrics:
+                raise LyricsScraperException(f"Lyrics not found for {artist_name} - {track_title}")
+
             print(f"Successfully scraped lyrics for {artist_name} - {track_title}")
 
             return lyrics
