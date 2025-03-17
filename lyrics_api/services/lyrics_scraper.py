@@ -14,6 +14,11 @@ class LyricsScraperException(Exception):
         super().__init__(message)
 
 
+class LyricsScraperNotFoundException(LyricsScraperException):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
 class LyricsScraper:
     """
     A scraper for fetching song lyrics from a specified website.
@@ -142,6 +147,15 @@ class LyricsScraper:
 
         return response
 
+    @staticmethod
+    def _handle_get_html_http_status_error(e: httpx.HTTPStatusError):
+        print(e)
+
+        if e.response.status_code == 404:
+            raise LyricsScraperNotFoundException(f"Page not found - {e}")
+        else:
+            raise LyricsScraperException(f"Failed to access page - {e}")
+
     async def _get_html(self, url: str) -> str:
         """
         Fetches the HTML content from the given URL asynchronously.
@@ -167,9 +181,7 @@ class LyricsScraper:
             response.raise_for_status()
             return response.text
         except httpx.HTTPStatusError as e:
-            message = f"Non-2XX status code - {e}"
-            print(message)
-            raise LyricsScraperException(message)
+            self._handle_get_html_http_status_error(e)
         except httpx.RequestError as e:
             message = f"Request failed - {e}"
             print(message)

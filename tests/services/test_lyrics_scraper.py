@@ -136,9 +136,11 @@ async def test_get_html_request_failure(lyrics_scraper, side_effect, error_messa
         await lyrics_scraper._get_html(url=url)
 
 
+@pytest.mark.parametrize("status_code, message", [(404, "Page not found"), (500, "Failed to access page")])
 @pytest.mark.asyncio
-async def test_get_html_non_2xx_status_code(lyrics_scraper):
+async def test_get_html_error_status_code(lyrics_scraper, status_code, message):
     mock_response = Mock(spec=httpx.Response)
+    mock_response.status_code = status_code
     mock_response.request = Mock()
     mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
         message="Test",
@@ -150,7 +152,7 @@ async def test_get_html_non_2xx_status_code(lyrics_scraper):
     lyrics_scraper._make_limited_request = mock_method
     url = "https://example.com/test"
 
-    with pytest.raises(LyricsScraperException, match="Non-2XX status code"):
+    with pytest.raises(LyricsScraperException, match=message):
         await lyrics_scraper._get_html(url=url)
 
 
