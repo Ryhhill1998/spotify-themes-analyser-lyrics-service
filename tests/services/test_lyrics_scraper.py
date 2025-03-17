@@ -85,6 +85,7 @@ async def test_make_limited_request(lyrics_scraper, mock_client):
     mock_client.get.assert_called_with(url=url, follow_redirects=True)
 
 
+@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_make_limited_request_restricts_concurrent_requests(lyrics_scraper, mock_client):
     mock_response = AsyncMock(spec=httpx.Response)
@@ -118,21 +119,14 @@ async def test_make_limited_request_restricts_concurrent_requests(lyrics_scraper
 # 5. Test _get_html raises LyricsScraperException if request fails.
 # 6. Test _get_html raises LyricsScraperException if general exception occurs.
 # 7. Test _get_html returns expected string.
-@pytest.mark.parametrize(
-    "side_effect, error_message",
-    [
-        (httpx.RequestError("RE"), "Request failed"),
-        (Exception("E"), "Failed to retrieve HTML"),
-    ]
-)
 @pytest.mark.asyncio
-async def test_get_html_request_failure(lyrics_scraper, side_effect, error_message):
+async def test_get_html_request_failure(lyrics_scraper):
     mock_method = AsyncMock()
-    mock_method.side_effect = side_effect
+    mock_method.side_effect = httpx.RequestError("Test")
     lyrics_scraper._make_limited_request = mock_method
     url = "https://example.com/test"
 
-    with pytest.raises(LyricsScraperException, match=error_message):
+    with pytest.raises(LyricsScraperException, match="Request failed"):
         await lyrics_scraper._get_html(url=url)
 
 

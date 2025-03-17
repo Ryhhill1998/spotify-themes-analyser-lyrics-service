@@ -190,10 +190,6 @@ class LyricsScraper:
             message = f"Request failed - {e}"
             print(message)
             raise LyricsScraperException(message)
-        except Exception as e:
-            message = f"Failed to retrieve HTML - {e}"
-            print(message)
-            raise LyricsScraperException(message)
 
     @staticmethod
     def _extract_lyrics_containers(html: str) -> list[Tag]:
