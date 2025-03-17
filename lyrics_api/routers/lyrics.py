@@ -42,4 +42,4 @@ async def get_lyrics(lyrics_request: LyricsRequest, data_service: DataServiceDep
         raise HTTPException(status_code=404, detail="Lyrics not found.")
     except Exception as e:
         print(e)
-        raise HTTPException(status_code=500, detail="Something went wrong")
+        raise HTTPException(status_code=500, detail="Something went wrong.")
