@@ -6,7 +6,7 @@ import httpx
 import pytest
 from bs4 import BeautifulSoup
 
-from lyrics_api.services.lyrics_scraper import LyricsScraper, LyricsScraperException
+from lyrics_api.services.lyrics_scraper import LyricsScraper, LyricsScraperException, LyricsScraperNotFoundException
 
 
 @pytest.fixture
@@ -307,7 +307,7 @@ async def test_scrape_lyrics_no_lyrics_containers(
     artist_name = "Artist"
     track_title = "Track"
 
-    with pytest.raises(LyricsScraperException, match=f"Lyrics containers not found for {artist_name} - {track_title}"):
+    with pytest.raises(LyricsScraperNotFoundException, match=f"Lyrics containers not found for {artist_name} - {track_title}"):
         await lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
 
 
@@ -428,7 +428,7 @@ async def test_scrape_lyrics_no_lyrics_found(
     artist_name = "Artist"
     track_title = "Track"
 
-    with pytest.raises(LyricsScraperException, match=f"Lyrics not found for {artist_name} - {track_title}"):
+    with pytest.raises(LyricsScraperNotFoundException, match=f"Lyrics not found for {artist_name} - {track_title}"):
         await lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
 
 

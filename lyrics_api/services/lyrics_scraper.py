@@ -10,11 +10,15 @@ from httpx import Response
 
 
 class LyricsScraperException(Exception):
+    """Base exception for errors encountered while scraping lyrics."""
+
     def __init__(self, message: str):
         super().__init__(message)
 
 
 class LyricsScraperNotFoundException(LyricsScraperException):
+    """Exception raised when lyrics are not found on the target website."""
+
     def __init__(self, message: str):
         super().__init__(message)
 
@@ -283,12 +287,12 @@ class LyricsScraper:
             lyrics_containers = self._extract_lyrics_containers(html)
 
             if not lyrics_containers:
-                raise LyricsScraperException(f"Lyrics containers not found for {artist_name} - {track_title}")
+                raise LyricsScraperNotFoundException(f"Lyrics containers not found for {artist_name} - {track_title}")
 
             lyrics = self._clean_lyrics_text(lyrics_containers)
 
             if not lyrics:
-                raise LyricsScraperException(f"Lyrics not found for {artist_name} - {track_title}")
+                raise LyricsScraperNotFoundException(f"Lyrics not found for {artist_name} - {track_title}")
 
             print(f"Successfully scraped lyrics for {artist_name} - {track_title}")
 
