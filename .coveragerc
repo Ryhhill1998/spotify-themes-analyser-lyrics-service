@@ -1,0 +1,3 @@
+[run]
+include =
+    lyrics_api/*
