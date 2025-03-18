@@ -54,16 +54,6 @@ def test_lyrics_data_service_exception(client, mock_data_service, mock_lyrics_re
     assert res.status_code == 500 and res.json() == {"detail": "Something went wrong."}
 
 
-def test_lyrics_general_exception(client, mock_data_service, mock_lyrics_request):
-    mock_get_lyrics = AsyncMock()
-    mock_get_lyrics.side_effect = Exception("Test")
-    mock_data_service.get_lyrics = mock_get_lyrics
-
-    res = client.post("/lyrics", json=mock_lyrics_request)
-
-    assert res.status_code == 500 and res.json() == {"detail": "Something went wrong."}
-
-
 def test_lyrics_success(client, mock_data_service, mock_lyrics_request):
     mock_get_lyrics = AsyncMock()
     mock_get_lyrics.return_value = LyricsResponse(

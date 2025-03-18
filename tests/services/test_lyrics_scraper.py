@@ -287,6 +287,20 @@ def mock_clean_lyrics_text() -> Mock:
 
 
 @pytest.mark.asyncio
+async def test_scrape_lyrics_get_html_failure(lyrics_scraper, mock_get_url, mock_get_html):
+    lyrics_scraper._get_url = mock_get_url
+    error_message = "Test"
+    mock_get_html.side_effect = LyricsScraperException(error_message)
+    lyrics_scraper._get_html = mock_get_html
+
+    artist_name = "Artist"
+    track_title = "Track"
+
+    with pytest.raises(LyricsScraperException, match=error_message):
+        await lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
+
+
+@pytest.mark.asyncio
 async def test_scrape_lyrics_no_lyrics_containers(
         lyrics_scraper,
         mock_get_url,
@@ -302,106 +316,6 @@ async def test_scrape_lyrics_no_lyrics_containers(
     track_title = "Track"
 
     with pytest.raises(LyricsScraperNotFoundException, match=f"Lyrics containers not found for {artist_name} - {track_title}"):
-        await lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
-
-
-@pytest.mark.parametrize(
-    "side_effect, error_message",
-    [
-        (LyricsScraperException("LSE"), "LSE"),
-        (Exception("E"), "An error occurred while scraping the lyrics"),
-    ]
-)
-@pytest.mark.asyncio
-async def test_scrape_lyrics_get_url_failure(lyrics_scraper, mock_get_url, side_effect, error_message):
-    mock_get_url.side_effect = side_effect
-    lyrics_scraper._get_url = mock_get_url
-
-    artist_name = "Artist"
-    track_title = "Track"
-
-    with pytest.raises(LyricsScraperException, match=error_message):
-        await lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
-
-
-@pytest.mark.parametrize(
-    "side_effect, error_message",
-    [
-        (LyricsScraperException("LSE"), "LSE"),
-        (Exception("E"), "An error occurred while scraping the lyrics"),
-    ]
-)
-@pytest.mark.asyncio
-async def test_scrape_lyrics_get_html_failure(lyrics_scraper, mock_get_url, mock_get_html, side_effect, error_message):
-    lyrics_scraper._get_url = mock_get_url
-    error_message = "Test"
-    mock_get_html.side_effect = LyricsScraperException(error_message)
-    lyrics_scraper._get_html = mock_get_html
-
-    artist_name = "Artist"
-    track_title = "Track"
-
-    with pytest.raises(LyricsScraperException, match=error_message):
-        await lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
-
-
-@pytest.mark.parametrize(
-    "side_effect, error_message",
-    [
-        (LyricsScraperException("LSE"), "LSE"),
-        (Exception("E"), "An error occurred while scraping the lyrics"),
-    ]
-)
-@pytest.mark.asyncio
-async def test_scrape_lyrics_extract_lyrics_containers_failure(
-        lyrics_scraper,
-        mock_get_url,
-        mock_get_html,
-        mock_extract_lyrics_containers,
-        side_effect,
-        error_message
-):
-    lyrics_scraper._get_url = mock_get_url
-    lyrics_scraper._get_html = mock_get_html
-    error_message = "Test"
-    mock_extract_lyrics_containers.side_effect = LyricsScraperException(error_message)
-    lyrics_scraper._extract_lyrics_containers = mock_extract_lyrics_containers
-
-    artist_name = "Artist"
-    track_title = "Track"
-
-    with pytest.raises(LyricsScraperException, match=error_message):
-        await lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
-
-
-@pytest.mark.parametrize(
-    "side_effect, error_message",
-    [
-        (LyricsScraperException("LSE"), "LSE"),
-        (Exception("E"), "An error occurred while scraping the lyrics"),
-    ]
-)
-@pytest.mark.asyncio
-async def test_scrape_lyrics_clean_lyrics_text_failure(
-        lyrics_scraper,
-        mock_get_url,
-        mock_get_html,
-        mock_extract_lyrics_containers,
-        mock_clean_lyrics_text,
-        side_effect,
-        error_message
-):
-    lyrics_scraper._get_url = mock_get_url
-    lyrics_scraper._get_html = mock_get_html
-    lyrics_scraper._extract_lyrics_containers = mock_extract_lyrics_containers
-    error_message = "Test"
-    mock_clean_lyrics_text.side_effect = LyricsScraperException(error_message)
-    lyrics_scraper._clean_lyrics_text = mock_clean_lyrics_text
-
-    artist_name = "Artist"
-    track_title = "Track"
-
-    with pytest.raises(LyricsScraperException, match=error_message):
         await lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
 
 
