@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from lyrics_api.dependencies import get_data_service
 from lyrics_api.main import app
-from lyrics_api.models import LyricsRequest, LyricsResponse
+from lyrics_api.models import LyricsResponse
 from lyrics_api.services.data_service import DataService, DataServiceNotFoundException, DataServiceException
 
 
