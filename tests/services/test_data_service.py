@@ -31,9 +31,9 @@ def mock_lyrics_request() -> LyricsRequest:
 # 1. Test _get_lyrics calls lyrics_scraper.scrape_lyrics if lyrics not in storage service.
 @pytest.mark.asyncio
 async def test__get_lyrics_lyrics_not_stored(data_service, mock_lyrics_scraper, mock_storage_service):
-    mock_retrieve_item = AsyncMock()
-    mock_retrieve_item.return_value = None
-    mock_storage_service.retrieve_item = mock_retrieve_item
+    mock_retrieve_lyrics = AsyncMock()
+    mock_retrieve_lyrics.return_value = None
+    mock_storage_service.retrieve_lyrics = mock_retrieve_lyrics
     lyrics = "Lyrics for track 1"
     mock_scrape_lyrics = AsyncMock()
     mock_scrape_lyrics.return_value = lyrics
@@ -45,16 +45,16 @@ async def test__get_lyrics_lyrics_not_stored(data_service, mock_lyrics_scraper, 
     await data_service._get_lyrics(track_id=track_id, artist_name=artist_name, track_title=track_title)
 
     mock_lyrics_scraper.scrape_lyrics.assert_called_once_with(artist_name=artist_name, track_title=track_title)
-    mock_storage_service.store_item.assert_called_once_with(key=track_id, value=lyrics)
+    mock_storage_service.store_lyrics.assert_called_once_with(track_id=track_id, lyrics=lyrics)
 
 
 # 2. Test _get_lyrics does not call lyrics_scraper.scrape_lyrics if lyrics in storage service.
 @pytest.mark.asyncio
 async def test__get_lyrics_lyrics_are_stored(data_service, mock_lyrics_scraper, mock_storage_service):
-    mock_retrieve_item = AsyncMock()
+    mock_retrieve_lyrics = AsyncMock()
     lyrics =  "Lyrics for track 1"
-    mock_retrieve_item.return_value = lyrics
-    mock_storage_service.retrieve_item = mock_retrieve_item
+    mock_retrieve_lyrics.return_value = lyrics
+    mock_storage_service.retrieve_lyrics = mock_retrieve_lyrics
     track_id = "1"
     artist_name = "Artist 1"
     track_title = "Track 1"
