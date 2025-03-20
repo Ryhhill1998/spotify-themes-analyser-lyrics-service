@@ -1,5 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
+
+import aiosqlite
 import httpx
 from fastapi import FastAPI
 
@@ -14,7 +16,9 @@ async def lifespan(app: FastAPI):
     settings = Settings()
 
     # initialise database
-    await initialise_db(settings.db_path)
+    db = await aiosqlite.connect(settings.db_path)
+    await initialise_db(db)
+    await db.close()
 
     semaphore = asyncio.Semaphore(settings.max_concurrent_scrapes)
     httpx_client = httpx.AsyncClient(base_url=settings.base_url, headers=settings.headers)
