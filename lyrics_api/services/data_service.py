@@ -2,7 +2,7 @@ import pydantic
 
 from lyrics_api.models import LyricsResponse, LyricsRequest
 from lyrics_api.services.lyrics_scraper import LyricsScraper, LyricsScraperException, LyricsScraperNotFoundException
-from lyrics_api.services.storage_service import StorageService, StorageServiceException
+from lyrics_api.services.storage.storage_service import StorageService, StorageServiceException
 
 
 class DataServiceException(Exception):
@@ -89,11 +89,11 @@ class DataService:
             If an error occurs while storing or retrieving lyrics via the storage service.
         """
 
-        lyrics = await self.storage_service.retrieve_item(track_id)
+        lyrics = await self.storage_service.retrieve_lyrics(track_id)
 
         if lyrics is None:
             lyrics = await self.lyrics_scraper.scrape_lyrics(artist_name=artist_name, track_title=track_title)
-            await self.storage_service.store_item(key=track_id, value=lyrics)
+            await self.storage_service.store_lyrics(track_id=track_id, lyrics=lyrics)
 
         return lyrics
 

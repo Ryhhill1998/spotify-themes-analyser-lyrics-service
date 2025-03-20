@@ -5,7 +5,7 @@ import pytest
 from lyrics_api.models import LyricsRequest, LyricsResponse
 from lyrics_api.services.data_service import DataService, DataServiceException
 from lyrics_api.services.lyrics_scraper import LyricsScraper, LyricsScraperNotFoundException, LyricsScraperException
-from lyrics_api.services.storage_service import StorageService, StorageServiceException
+from lyrics_api.services.storage.storage_service import StorageService, StorageServiceException
 
 
 @pytest.fixture

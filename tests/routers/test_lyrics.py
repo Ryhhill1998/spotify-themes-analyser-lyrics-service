@@ -8,7 +8,6 @@ from lyrics_api.main import app
 from lyrics_api.models import LyricsResponse
 from lyrics_api.services.data_service import DataService, DataServiceNotFoundException, DataServiceException
 
-
 # 1. Test /lyrics returns a 404 status code the data service raises a DataServiceNotFoundException exception.
 # 2. Test /lyrics returns a 500 status code if the data service raises any other exception.
 # 3. Test /lyrics returns expected response if successful.
