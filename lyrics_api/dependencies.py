@@ -1,9 +1,32 @@
+from functools import lru_cache
 from typing import Annotated
+
+import aiosqlite
 from fastapi import Depends, Request
 
 from lyrics_api.services.data_service import DataService
 from lyrics_api.services.lyrics_scraper import LyricsScraper
-from lyrics_api.services.storage_service import StorageService
+from lyrics_api.services.storage.storage_service import StorageService
+from lyrics_api.settings import Settings
+
+
+@lru_cache
+def get_settings() -> Settings:
+    """
+    Retrieves the application settings.
+
+    The settings are cached to optimize performance, ensuring they are only loaded once per application instance.
+
+    Returns
+    -------
+    Settings
+        The application settings instance.
+    """
+
+    return Settings()
+
+
+SettingsDependency = Annotated[Settings, Depends(get_settings)]
 
 
 def get_lyrics_scraper(request: Request) -> LyricsScraper:
@@ -24,22 +47,35 @@ def get_lyrics_scraper(request: Request) -> LyricsScraper:
     return request.app.state.lyrics_scraper
 
 
-def get_storage_service(request: Request) -> StorageService:
+async def get_db_conn(settings: SettingsDependency):
+    """Dependency to get an async database connection."""
+    db = await aiosqlite.connect(settings.db_path)
+
+    try:
+        yield db  # Provide connection to route handlers
+    finally:
+        await db.close()
+
+
+DBConnectionDependency = Annotated[aiosqlite.Connection, Depends(get_db_conn)]
+
+
+def get_storage_service(db_conn: DBConnectionDependency) -> StorageService:
     """
-    Retrieves the StorageService instance from the FastAPI application state.
+    Retrieves the storage service from the FastAPI application state.
 
     Parameters
     ----------
-    request : Request
-        The FastAPI request object.
+    db_conn : DBConnectionDependency
+        The connection to the database.
 
     Returns
     -------
     StorageService
-        The storage service instance stored in the application state.
+        The configured StorageService instance.
     """
 
-    return request.app.state.storage_service
+    return StorageService(db_conn)
 
 
 def get_data_service(

@@ -7,8 +7,7 @@ class Settings(BaseSettings):
     user_agent: str
     max_concurrent_scrapes: int
 
-    redis_host: str
-    redis_port: int
+    db_path: str
 
     @computed_field
     @property 
