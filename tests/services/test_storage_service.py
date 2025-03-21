@@ -79,7 +79,7 @@ async def test_store_lyrics_track_already_exists(storage_service, existing_track
 
 
 @pytest.mark.asyncio
-async def test_store_lyrics_operational_error(storage_service, existing_track, db):
+async def test_store_lyrics_operational_error(storage_service, db):
     """Test retrieving lyrics when a DB operational error occurs."""
 
     mock_execute = AsyncMock()
@@ -87,11 +87,11 @@ async def test_store_lyrics_operational_error(storage_service, existing_track, d
     db.execute = mock_execute
 
     with pytest.raises(StorageServiceException, match="Database operation failed"):
-        await storage_service.store_lyrics(track_id="2", lyrics="Lyrics for track 2")
+        await storage_service.store_lyrics(track_id="1", lyrics="Lyrics for track 1")
 
 
 @pytest.mark.asyncio
-async def test_store_lyrics_database_error(storage_service, existing_track, db):
+async def test_store_lyrics_database_error(storage_service, db):
     """Test retrieving lyrics when a DB operational error occurs."""
 
     mock_execute = AsyncMock()
@@ -99,7 +99,7 @@ async def test_store_lyrics_database_error(storage_service, existing_track, db):
     db.execute = mock_execute
 
     with pytest.raises(StorageServiceException, match="Unexpected database error"):
-        await storage_service.store_lyrics(track_id="2", lyrics="Lyrics for track 2")
+        await storage_service.store_lyrics(track_id="1", lyrics="Lyrics for track 1")
 
 
 @pytest.mark.asyncio
@@ -149,7 +149,7 @@ async def test_retrieve_lyrics_database_error(storage_service, existing_track, d
 async def test_retrieve_lyrics_does_not_exist(storage_service):
     """Test retrieving lyrics for a track that doesn't exist."""
 
-    retrieved_lyrics = await storage_service.retrieve_lyrics("does_not_exist")
+    retrieved_lyrics = await storage_service.retrieve_lyrics("1")
 
     assert retrieved_lyrics is None, "Should return None for non-existent track"
 
