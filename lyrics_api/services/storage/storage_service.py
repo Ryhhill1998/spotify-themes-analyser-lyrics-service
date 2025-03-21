@@ -37,9 +37,9 @@ class StorageService:
         except aiosqlite.IntegrityError:
             raise StorageServiceException(f"Track ID '{track_id}' already exists.")
         except aiosqlite.OperationalError as e:
-            raise StorageServiceException(f"Database operation failed: {e}")
+            raise StorageServiceException(f"Database operation failed - {e}")
         except aiosqlite.DatabaseError as e:
-            raise StorageServiceException(f"Unexpected database error: {e}")
+            raise StorageServiceException(f"Unexpected database error - {e}")
 
     async def retrieve_lyrics(self, track_id: str) -> str | None:
         select_query = f"""
@@ -48,10 +48,13 @@ class StorageService:
         """
 
         try:
-            async with self.db.execute(select_query, (track_id,)) as cursor:
-                row = await cursor.fetchone()
-                return row[1] if row else None
+            cursor = await self.db.execute(select_query, (track_id,))
+            row = await cursor.fetchone()
+            await cursor.close()
+            lyrics = row[1] if row else None
+
+            return lyrics
         except aiosqlite.OperationalError as e:
-            raise StorageServiceException(f"Database operation failed: {e}")
+            raise StorageServiceException(f"Database operation failed - {e}")
         except aiosqlite.DatabaseError as e:
-            raise StorageServiceException(f"Unexpected database error: {e}")
+            raise StorageServiceException(f"Unexpected database error - {e}")
